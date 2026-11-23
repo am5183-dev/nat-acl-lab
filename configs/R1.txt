@@ -1,0 +1,38 @@
+hostname R1
+interface GigabitEthernet0/0
+ no ip address
+ no shutdown
+interface GigabitEthernet0/0.10
+ encapsulation dot1Q 10
+ ip address 192.168.10.1 255.255.255.0
+ ip nat inside
+ ip access-group WEB_ONLY in
+interface GigabitEthernet0/0.20
+ encapsulation dot1Q 20
+ ip address 192.168.20.1 255.255.255.0
+ ip nat inside
+ ip access-group GUEST_POLICY in
+interface GigabitEthernet0/1
+ ip address 203.0.113.2 255.255.255.252
+ ip nat outside
+ no shutdown
+ip route 0.0.0.0 0.0.0.0 203.0.113.1
+!
+! NAT match list and PAT overload
+access-list 1 remark NAT-MATCH inside private networks
+access-list 1 permit 192.168.10.0 0.0.0.255
+access-list 1 permit 192.168.20.0 0.0.0.255
+ip nat inside source list 1 interface GigabitEthernet0/1 overload
+!
+! Access policy
+ip access-list extended WEB_ONLY
+ remark Staff may use DNS, HTTP and ICMP only
+ permit udp 192.168.10.0 0.0.0.255 any eq domain
+ permit tcp 192.168.10.0 0.0.0.255 any eq www
+ permit icmp 192.168.10.0 0.0.0.255 any
+ip access-list extended GUEST_POLICY
+ remark Guests isolated from Staff, Internet DNS/HTTP/ICMP only
+ 10 deny ip 192.168.20.0 0.0.0.255 192.168.10.0 0.0.0.255
+ 20 permit udp 192.168.20.0 0.0.0.255 any eq domain
+ 30 permit tcp 192.168.20.0 0.0.0.255 any eq www
+ 40 permit icmp 192.168.20.0 0.0.0.255 any
